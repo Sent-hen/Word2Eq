@@ -1,7 +1,7 @@
 import json
 from torch.utils.data import Dataset
 
-def format_dataset(datapath='/Users/cesargamez/Documents/ml-projects/Word2Eq/data/SVAMP.json'):
+def format_dataset(datapath='/Word2Eq/data/SVAMP.json'):
     return SVAMPDataset(datapath, [['Body', 'Question']], ['ID', 'Body', 'Question', 'Answer', 'Type'])
 
 
