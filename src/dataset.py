@@ -43,5 +43,13 @@ if __name__ == '__main__':
 
     dataset = SVAMPDataset(datapath)
 
-    # Prints fields of each problem ("ID", "Body", "Question", "Equation", "Answer", "Type")
-    print(dataset.data[0].keys())
+    # dataset.data = dataset.data[:4]
+
+    for group in dataset.data:
+        group["Body_with_Question"] = (group["Body"] + ' ' + group["Question"] if group["Body"][-1] == '.' else group["Body"] + ', ' + group["Question"])
+        del group["ID"]
+        del group["Body"]
+        del group["Question"]
+
+    with open('SVAMP_combined_body_question.json', 'w', encoding='utf-8') as f:
+        json.dump(dataset.data, f, ensure_ascii=False, indent=4)
