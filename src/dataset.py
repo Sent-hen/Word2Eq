@@ -51,5 +51,5 @@ if __name__ == '__main__':
         del group["Body"]
         del group["Question"]
 
-    with open('SVAMP_combined_body_question.json', 'w', encoding='utf-8') as f:
+    with open('../data/SVAMP_combined_body_question.json', 'w', encoding='utf-8') as f:
         json.dump(dataset.data, f, ensure_ascii=False, indent=4)
