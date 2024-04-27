@@ -1,42 +1,15 @@
-import torch
-import numpy as np
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.trainers import BpeTrainer
 
-START_TOKEN = ''
-END_TOKEN = ''
-PADDING_TOKEN = ''
-
-equation_vocabulary = [
-    START_TOKEN, 
-    '1', 
-    '2', 
-    '3', 
-    '4', 
-    '5', 
-    '6', 
-    '7', 
-    '8', 
-    '9', 
-    '0', 
-    ' ', 
-    '*', 
-    '+', 
-    ',', 
-    '-', 
-    '.', 
-    '/', 
-    '=',
-    PADDING_TOKEN,
-    END_TOKEN,
-]
-
-index_to_equation = {k:v for k,v in enumerate(equation_vocabulary)}
-equation_to_index = {v:k for k,v in enumerate(equation_vocabulary)}
-
-class BPETokenizer():
-    pass
-
-class EquationVocabularyTokenizer():
-    pass
+import dataset as ds
 
 if __name__ == '__main__':
-    print(index_to_equation[18])
+    tokenizer = Tokenizer(BPE())
+    tokenizer.pre_tokenizer = Whitespace()
+    dataset = ds.format_dataset()
+
+    trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+    tokenizer.train_from_iterator(dataset.data['Body-Question'], trainer=trainer)
+    output = tokenizer.encode("John has 5 apples.")
