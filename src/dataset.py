@@ -1,7 +1,7 @@
 import json
 from torch.utils.data import Dataset
 
-def format_dataset(datapath='/Word2Eq/data/SVAMP.json'):
+def format_dataset(datapath='/Users/cesargamez/Documents/ml-projects/Word2Eq/data/SVAMP.json'):
     return SVAMPDataset(datapath, [['Body', 'Question']], ['ID', 'Body', 'Question', 'Answer', 'Type'])
 
 
@@ -14,7 +14,24 @@ class SVAMPDataset:
         self.combine_cols()
         self.remove_cols()
         self.data = self.to_dict() # finial type of self.data is dict
+        self.to_file()
             
+    def to_file(self):
+        print('OUTPUTTING TO FILE')
+        en = ''
+        eq = ''
+        with open("/Users/cesargamez/Documents/ml-projects/Word2Eq/en.txt", "w") as text_file:
+            for line in self.data['Body-Question']:
+                en += f'{line}\n'
+
+            text_file.write(en)
+
+        with open("/Users/cesargamez/Documents/ml-projects/Word2Eq/eq.txt", "w") as text_file:
+            for line in self.data['Equation']:
+                eq += f'{line}\n'
+            text_file.write(eq)
+
+
     def to_dict(self):
         data = dict()
         for group in self.data:
