@@ -1,0 +1,18 @@
+# Tiny config for CI: exercises the full train -> eval -> artifact path in seconds.
+train_files: [data/mawps-asdiv-a_svamp/train.csv]
+test_files: [data/mawps-asdiv-a_svamp/dev.csv]
+out_dir: runs/smoke
+seed: 7
+
+d_model: 64
+nhead: 4
+enc_layers: 1
+dec_layers: 1
+ff_dim: 128
+dropout: 0.1
+
+epochs: 3
+batch_size: 32
+warmup_steps: 20
+limit_train: 256
+num_threads: 2

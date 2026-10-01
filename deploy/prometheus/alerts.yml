@@ -1,0 +1,67 @@
+# SLO alerting for Word2Eq (see docs/SLO.md and docs/RUNBOOK.md).
+# Multi-window, multi-burn-rate alerts (Google SRE Workbook, ch. 5) on a
+# 99.9% availability SLO: page on fast burn, ticket on slow burn.
+groups:
+  - name: word2eq-slo-recording
+    rules:
+      - record: word2eq:error_ratio:rate5m
+        expr: |
+          sum(rate(word2eq_requests_total{outcome=~"error|timeout|shed|unavailable"}[5m]))
+          / sum(rate(word2eq_requests_total{outcome!="invalid"}[5m]))
+      - record: word2eq:error_ratio:rate1h
+        expr: |
+          sum(rate(word2eq_requests_total{outcome=~"error|timeout|shed|unavailable"}[1h]))
+          / sum(rate(word2eq_requests_total{outcome!="invalid"}[1h]))
+      - record: word2eq:error_ratio:rate6h
+        expr: |
+          sum(rate(word2eq_requests_total{outcome=~"error|timeout|shed|unavailable"}[6h]))
+          / sum(rate(word2eq_requests_total{outcome!="invalid"}[6h]))
+      - record: word2eq:latency_p99:5m
+        expr: histogram_quantile(0.99, sum by (le) (rate(word2eq_request_latency_seconds_bucket[5m])))
+
+  - name: word2eq-slo-alerts
+    rules:
+      - alert: Word2EqErrorBudgetFastBurn
+        expr: word2eq:error_ratio:rate1h > (14.4 * 0.001) and word2eq:error_ratio:rate5m > (14.4 * 0.001)
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "Burning 30-day error budget >14x (2% of budget in 1h)"
+          runbook: docs/RUNBOOK.md#error-budget-burn
+      - alert: Word2EqErrorBudgetSlowBurn
+        expr: word2eq:error_ratio:rate6h > (6 * 0.001) and word2eq:error_ratio:rate1h > (6 * 0.001)
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Burning 30-day error budget >6x (5% of budget in 6h)"
+          runbook: docs/RUNBOOK.md#error-budget-burn
+      - alert: Word2EqLatencySLO
+        expr: word2eq:latency_p99:5m > 0.25
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "p99 solve latency above 250 ms for 10m"
+          runbook: docs/RUNBOOK.md#latency
+      - alert: Word2EqLoadShedding
+        expr: sum(rate(word2eq_shed_total{reason="queue_full"}[5m])) > 0
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Admission control is rejecting requests: under-provisioned"
+          runbook: docs/RUNBOOK.md#load-shedding
+      - alert: Word2EqUnverifiedAnswers
+        expr: |
+          sum(rate(word2eq_unverified_answers_total[30m]))
+          / sum(rate(word2eq_requests_total{outcome="ok"}[30m])) > 0.02
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: ">2% of answers fail symbolic verification: possible input drift or bad model"
+          runbook: docs/RUNBOOK.md#unverified-answers
+      - alert: Word2EqNotReady
+        expr: min(word2eq_ready) == 0
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "A replica has been unready for 5m (model load failure?)"
+          runbook: docs/RUNBOOK.md#not-ready

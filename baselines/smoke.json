@@ -1,0 +1,10 @@
+{
+  "note": "Smoke config baseline (configs/smoke.yaml); CI pipeline gate only.",
+  "test": {
+    "constrained": {
+      "answer_acc": 0.007,
+      "equation_acc": 0.0,
+      "valid_rate": 1.0
+    }
+  }
+}
