@@ -1,0 +1,16 @@
+{
+  "note": "configs/base.yaml on SVAMP (1,000 problems); promotion baseline for word2eq gate.",
+  "model_version": "20260930054229-a8c8466e",
+  "test": {
+    "constrained": {
+      "answer_acc": 0.164,
+      "equation_acc": 0.141,
+      "valid_rate": 1.0
+    },
+    "unconstrained": {
+      "answer_acc": 0.163,
+      "equation_acc": 0.14,
+      "valid_rate": 0.974
+    }
+  }
+}

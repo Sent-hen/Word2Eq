@@ -1,0 +1,24 @@
+# Compact variant: ~4x fewer parameters, lower serving latency.
+# Standard SVAMP protocol: train on MAWPS + ASDiv-A, test on the 1,000 SVAMP
+# challenge problems. 10% of train is held out (content-hashed) for early stopping,
+# so the test set never influences model selection.
+train_files: [data/mawps-asdiv-a_svamp/train.csv]
+test_files: [data/mawps-asdiv-a_svamp/dev.csv]
+val_fraction: 0.1
+out_dir: runs/small
+seed: 1234
+
+d_model: 128
+nhead: 4
+enc_layers: 2
+dec_layers: 2
+ff_dim: 512
+dropout: 0.3
+
+epochs: 60
+batch_size: 64
+lr: 0.0005
+weight_decay: 0.01
+warmup_steps: 400
+label_smoothing: 0.1
+patience: 15

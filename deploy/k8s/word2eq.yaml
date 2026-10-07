@@ -1,0 +1,94 @@
+# Reference Kubernetes deployment for the inference service.
+# Probe/resource values match the SLOs and capacity numbers in docs/SLO.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: word2eq
+  labels: { app: word2eq }
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }   # never drop below capacity during deploys
+  selector:
+    matchLabels: { app: word2eq }
+  template:
+    metadata:
+      labels: { app: word2eq }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext: { runAsNonRoot: true, runAsUser: 10001 }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: word2eq } }
+      containers:
+        - name: word2eq
+          image: ghcr.io/sent-hen/word2eq:latest
+          ports: [{ containerPort: 8000, name: http }]
+          env:
+            - { name: WORD2EQ_THREADS, value: "2" }
+            - { name: OMP_NUM_THREADS, value: "2" }
+            - { name: WORD2EQ_MAX_BATCH, value: "32" }
+            - { name: WORD2EQ_MAX_WAIT_MS, value: "5" }
+            - { name: WORD2EQ_MAX_QUEUE, value: "256" }
+            - { name: WORD2EQ_TIMEOUT_S, value: "2" }
+            - { name: WORD2EQ_QUANTIZE, value: "0" }
+          resources:
+            requests: { cpu: "2", memory: 512Mi }
+            limits: { memory: 1Gi }             # no CPU limit: avoid CFS throttling on the hot path
+          startupProbe:                         # model load + warm-up
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:                        # process-level only; never tied to model state
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:                            # let endpoints drop the pod before SIGTERM drain
+              sleep: { seconds: 5 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: word2eq
+spec:
+  selector: { app: word2eq }
+  ports: [{ port: 80, targetPort: http, name: http }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: word2eq
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app: word2eq }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: word2eq
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: word2eq }
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
