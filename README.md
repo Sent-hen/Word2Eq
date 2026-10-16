@@ -1,17 +1,18 @@
 # Word2Eq
 
-Word2Eq translates math word problems into equations and verifies the answer. It includes a
-reproducible training pipeline and a micro-batched, SLO-instrumented inference service.
+Word2Eq turns math word problems into equations and checks the answer. The repo has the
+training code, which gives the same weights on every run, and a small web service that batches
+requests together and tracks its own latency targets.
 
 ```
 "Paco had 26 cookies. He ate 9 of them. How many cookies are left?"
    → {"equation": "26 - 9", "equation_prefix": ["-", "number0", "number1"], "answer": 17.0, "verified": true}
 ```
 
-The model is a seq2seq Transformer. It translates a problem, with its numbers masked as
-`number0..numberK`, into a prefix-notation equation. Decoding is constrained to the equation
-grammar, so every output is well-formed, and every answer is computed and checked symbolically
-before the service returns it.
+The model is a seq2seq Transformer. The numbers in a problem are swapped for placeholders
+(`number0..numberK`), and the model writes out an equation in prefix notation. Decoding can only
+pick tokens the equation grammar allows, so every output parses. The service also computes and
+checks each answer symbolically before returning it.
 
 ## Architecture
 
@@ -56,9 +57,9 @@ The test set is the 1,000 SVAMP problems; training uses MAWPS + ASDiv-A. Model s
 | `configs/base.yaml` | 6.4M | 16.4% | 97.4% → **100%** | 638 /s |
 | `configs/small.yaml` | 1.4M | 15.6% | 94.0% → **100%** | 2,422 /s |
 
-In-distribution validation accuracy is 73%. SVAMP is an adversarial challenge set, and the
-original paper reports about 20% for a vanilla Transformer. This project's focus is the
-system around the model, not the leaderboard.
+On in-distribution validation data it gets 73%. SVAMP is built to trip models up, and the
+original paper reports about 20% for a plain Transformer. I spent most of my time on the training
+and serving code, so I haven't tried hard to push the accuracy up.
 
 Serving capacity and its open issues are in [docs/SLO.md](docs/SLO.md#capacity).
 
@@ -79,8 +80,8 @@ python scripts/loadtest.py --url http://localhost:8000 --rps 50 150 --duration 2
 pytest
 ```
 
-Container and Kubernetes: see [Dockerfile](Dockerfile) and [deploy/k8s/word2eq.yaml](deploy/k8s/word2eq.yaml).
-The manifest sets probes, a PDB, an HPA, zone spread and a zero-downtime rollout.
+For containers and Kubernetes, see the [Dockerfile](Dockerfile) and [deploy/k8s/word2eq.yaml](deploy/k8s/word2eq.yaml).
+The manifest has health probes, a PDB, an HPA and zone spreading, and it rolls out without downtime.
 
 ## Data
 
